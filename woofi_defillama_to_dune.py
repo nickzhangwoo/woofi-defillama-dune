@@ -3,19 +3,24 @@ import requests
 import pandas as pd
 from datetime import datetime
 
-# 读取 Dune API Key
+# Dune 公司 API key（从 GitHub Secrets 里读取）
 DUNE_API_KEY = os.environ.get("DUNE_API_KEY")
+
 if not DUNE_API_KEY:
     raise ValueError("DUNE_API_KEY is not set in environment variables.")
 
-# DefiLlama API 基础 URL
+# DefiLlama API endpoints
 BASE_URL = "https://api.llama.fi"
 
-# WOOFi 各产品的协议 slug
-protocols = ["woofi", "woofi-earn", "woofi-swap", "woofi-pro-perps"]
+# 上传到 Dune 的表信息
+DUNE_TABLE_NAMESPACE = "woofianalytics"  # 公司 namespace
+DUNE_TABLE_NAME = "nickzhang_woofi_metrics"  # 表名
+DUNE_TABLE_FULL_NAME = f"dune.{DUNE_TABLE_NAMESPACE}.{DUNE_TABLE_NAME}"
 
 def get_woofi_metrics():
+    protocols = ["woofi-pro-perps", "woofi-swap", "woofi-earn"]
     data = []
+
     for protocol in protocols:
         url = f"{BASE_URL}/protocol/{protocol}"
         resp = requests.get(url)
@@ -31,33 +36,20 @@ def get_woofi_metrics():
             })
         else:
             print(f"Error fetching {protocol}: {resp.status_code}")
+
     return pd.DataFrame(data)
 
 def upload_to_dune(df):
-    # CSV 数据
-    csv_data = df.to_csv(index=False)
-
-    # 自动生成表名：nickzhang_前缀 + 日期
-    table_name = f"nickzhang_woofi_metrics_{datetime.utcnow().strftime('%Y%m%d')}"
-
+    url = "https://api.dune.com/api/v1/insert"
+    headers = {"X-Dune-API-Key": DUNE_API_KEY}
     payload = {
-        "data": csv_data,
-        "description": "WOOFi metrics daily data",
-        "table_name": table_name,
-        "is_private": False
+        "table_name": DUNE_TABLE_NAME,
+        "namespace": DUNE_TABLE_NAMESPACE,
+        "data": df.to_dict(orient="records")
     }
-
-    headers = {
-        "Content-Type": "application/json",
-        "X-DUNE-API-KEY": DUNE_API_KEY
-    }
-
-    # 上传 API URL（企业版 Dune 支持）
-    url = "https://api.dune.com/api/v1/table/upload/csv"
     resp = requests.post(url, json=payload, headers=headers)
-
     if resp.status_code == 200:
-        print(f"Data uploaded successfully as {table_name}.")
+        print("Upload successful ✅")
     else:
         print(f"Upload failed ❌: {resp.status_code} {resp.text}")
 
