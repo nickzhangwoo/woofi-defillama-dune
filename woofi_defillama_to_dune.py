@@ -13,7 +13,6 @@ if not DUNE_API_KEY:
 BASE_URL = "https://api.llama.fi"
 
 def get_woofi_metrics():
-    # 获取 WOOFi 各个产品数据
     protocols = ["woofi-pro", "woofi-swap", "woofi-earn"]
     data = []
 
@@ -22,7 +21,6 @@ def get_woofi_metrics():
         resp = requests.get(url)
         if resp.status_code == 200:
             info = resp.json()
-            # 收集部分你需要的数据示例
             data.append({
                 "protocol": protocol,
                 "tvl": info.get("tvl"),
@@ -37,18 +35,17 @@ def get_woofi_metrics():
     return pd.DataFrame(data)
 
 def upload_to_dune(df):
-    # 这里是上传到 Dune 的示例
-    # 你可以改成真实的 Dune API 上传逻辑
     headers = {"X-Dune-API-Key": DUNE_API_KEY}
     url = "https://api.dune.com/api/v1/dataset/upload"
     payload = df.to_dict(orient="records")
     resp = requests.post(url, json=payload, headers=headers)
     if resp.status_code == 200:
-        print("Upload successful")
+        print("Upload successful ✅")
     else:
-        print(f"Upload failed: {resp.status_code} {resp.text}")
+        print(f"Upload failed ❌: {resp.status_code} {resp.text}")
 
 if __name__ == "__main__":
     df = get_woofi_metrics()
+    print(f"Fetched {len(df)} rows of WOOFi data:")
     print(df)
     upload_to_dune(df)
